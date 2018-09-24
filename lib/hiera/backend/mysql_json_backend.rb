@@ -134,20 +134,34 @@ class Hiera
           props.set_property :password, mysql_pass
 
           conn = com.mysql.jdbc.Driver.new.connect(url, props)
-          stmt = conn.create_statement
+          begin
+            stmt = conn.create_statement
 
-          res = stmt.execute_query(query)
-          md = res.getMetaData
-          numcols = md.getColumnCount
+            res = stmt.execute_query(query)
+            md = res.getMetaData
+            numcols = md.getColumnCount
 
-          Hiera.debug("Mysql Query returned #{numcols} rows")
+            Hiera.debug("Mysql Query returned #{numcols} rows")
 
-          while res.next
-            row = {}
-            (1..numcols).each do |c|
-              row[md.getColumnName(c)] = res.getString(c)
+            while res.next
+              row = {}
+              (1..numcols).each do |c|
+                row[md.getColumnName(c)] = res.getString(c)
+              end
+              data << row
             end
-            data << row
+          rescue => e
+            Hiera.debug e.message
+          ensure
+            begin
+              res.close()
+              stmt.close()
+              conn.close()
+            rescue => e
+              res = nil
+              stmt = nil
+              conn = nil
+            end
           end
 
         else
